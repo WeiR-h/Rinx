@@ -28,7 +28,9 @@ jobs:
           RUSTUP_TOOLCHAIN: 1.98.0
         run: cargo test --manifest-path crates/miniapp-core/Cargo.toml --locked
   windows-client:
-    runs-on: windows-2025
+    # Match the supported VS 2022 image used by builds.yml. The pinned
+    # cmake crate predates the VS 2026 generator on windows-2025.
+    runs-on: windows-2022
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
