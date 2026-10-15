@@ -28,7 +28,8 @@ impl ActivityCard {
         let line = |s: &str, limit: usize| s.chars().count() <= limit && !s.chars().any(char::is_control);
         if self.version != 1 || !identifier(&self.app) || !identifier(&self.resource)
             || self.room.len() > 255 || !self.room.starts_with('!')
-            || !self.room[1..].contains(':') || self.room.chars().any(|c| c.is_whitespace() || c.is_control())
+            || !self.room[1..].split_once(':').is_some_and(|(local, server)| !local.is_empty() && !server.is_empty() && !server.contains(['/', '?', '#', '\\']))
+            || self.room.chars().any(|c| c.is_whitespace() || c.is_control())
             || self.title.trim().is_empty() || !line(&self.title, 120)
             || !line(&self.location, 200) || self.start >= self.end || self.end > 253402300799
         { return Err("Unsupported or invalid native activity card".into()); }
@@ -71,5 +72,15 @@ mod tests {
             let mut value = wire(); value[field] = serde_json::json!("forged");
             assert!(ActivityCard::parse(value).is_err(), "{field}");
         }
+    }
+    #[test] fn empty_room_parts_and_url_components_are_rejected() {
+        for room in ["!:example.org", "!room:", "!room:example.org/path", "!room:example.org?query", "!room:example.org#fragment"] {
+            let mut value = wire(); value["room"] = serde_json::json!(room);
+            assert!(ActivityCard::parse(value).is_err(), "{room}");
+        }
+    }
+    #[test] fn room_server_may_include_an_ipv6_address_and_port() {
+        let mut value = wire(); value["room"] = serde_json::json!("!opaque:[2001:db8::1]:8448");
+        assert!(ActivityCard::parse(value).is_ok());
     }
 }
